@@ -4,6 +4,7 @@
 
 [![PyPI version](https://badge.fury.io/py/flet-stack.svg)](https://badge.fury.io/py/flet-stack)
 [![Python versions](https://img.shields.io/pypi/pyversions/flet-stack.svg)](https://pypi.org/project/flet-stack/)
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/flet-stack?period=total&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=BLUE&left_text=downloads)](https://pepy.tech/projects/flet-stack)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Features
@@ -17,8 +18,30 @@
 
 ## Installation
 
+### From PyPI
+
 ```bash
 pip install flet-stack
+```
+
+### From GitHub
+
+```bash
+pip install git+https://github.com/fasilwdr/flet-stack.git
+```
+
+### Install Specific Version
+
+```bash
+pip install git+https://github.com/fasilwdr/flet-stack.git@v0.1.0
+```
+
+### From Source
+
+```bash
+git clone https://github.com/fasilwdr/flet-stack.git
+cd flet-stack
+pip install .
 ```
 
 ## Quick Start
