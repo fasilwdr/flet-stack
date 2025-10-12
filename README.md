@@ -70,7 +70,7 @@ def main(page: ft.Page):
     page.title = "My Flet App"
     page.go("/")  # Navigate to home
 
-ft.run(target=main)
+ft.run(main)
 ```
 
 That's it! The routing is automatically enabled.
