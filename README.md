@@ -39,7 +39,7 @@ pip install git+https://github.com/fasilwdr/flet-stack.git
 ### Install Specific Version
 
 ```bash
-pip install git+https://github.com/fasilwdr/flet-stack.git@v0.2.1
+pip install git+https://github.com/fasilwdr/flet-stack.git@v0.2.2
 ```
 
 ### From Source
