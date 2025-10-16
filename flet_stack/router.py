@@ -1,161 +1,292 @@
 import asyncio
-import re
 import inspect
-
+from dataclasses import dataclass, field
+from typing import Callable, Type, Optional, Dict, List
 import flet as ft
 
+# Registry to store view configurations
+_VIEW_REGISTRY: Dict[str, dict] = {}
 
-# --- Decorator & Router Implementation ---
 
-class ViewPattern:
-    def __init__(self, pattern, state_class, func, on_load, view_kwargs):
-        self.pattern = pattern
-        self.state_class = state_class
-        self.func = func
-        self.on_load = on_load
-        self.view_kwargs = view_kwargs
-        regex_pat = re.sub(r"{(\w+)}", r"(?P<\1>[^/]+)", pattern)
-        self.regex = re.compile(f"^{regex_pat}$")
+def view(route: str, state_class: Type = None, on_load: Optional[Callable] = None, **view_kwargs):
+    """
+    Decorator to register a view with its route, state class, on_load handler, and view properties.
 
-    def match(self, route):
-        return self.regex.match(route)
+    Args:
+        route: The route path for this view (e.g., '/', '/store', '/user/{user_id}')
+        state_class: Optional dataclass for view-specific state (should be decorated with @ft.observable)
+        on_load: Optional function to call before rendering the view (can be async).
+                 Function can accept: state, page, and any URL parameters
+        **view_kwargs: Additional keyword arguments to pass to ft.View (e.g., appbar, bgcolor, padding)
+    """
 
-    def build(self, page, **kwargs):
-        state = self.state_class() if self.state_class else None
-
-        loading_control = ft.Container(
-            alignment=ft.Alignment.CENTER,
-            content=ft.ProgressRing(stroke_width=5, color=ft.Colors.PRIMARY_CONTAINER)
-        )
-
-        v = ft.View(
-            route=page.route,
-            controls=[loading_control],
-            **self.view_kwargs
-        )
-        # Prepare argument map for view function
-        arg_map = {
-            "state": state,
-            "page": page,
-            **kwargs,
+    def decorator(func: Callable):
+        _VIEW_REGISTRY[route] = {
+            'func': func,
+            'state_class': state_class,
+            'on_load': on_load,
+            'view_kwargs': view_kwargs,
+            'route': route
         }
-
-        def show_actual_view():
-            view_sig = inspect.signature(self.func)
-            # Build argument list for the view function, only those which exist
-            call_args = []
-            for name, param in view_sig.parameters.items():
-                call_args.append(arg_map.get(name, param.default if param.default != inspect.Parameter.empty else None))
-            controls = [
-                ft.StateView(
-                    state,
-                    lambda state: self.func(*call_args)
-                )
-            ]
-            v.controls.clear()
-            v.controls.extend(controls)
-            page.update()
-
-        def sync_loader():
-            if self.on_load:
-                sig = inspect.signature(self.on_load)
-                arg_map = {
-                    "state": state,
-                    "page": page,
-                    "view": v,
-                    **kwargs,
-                }
-                actual_args = [arg_map.get(name, None) for name in sig.parameters]
-                self.on_load(*actual_args)
-            # After on_load, update the UI in event loop via a coroutine
-            async def async_show_actual_view():
-                show_actual_view()
-            page.run_task(async_show_actual_view)
-
-        async def async_loader():
-            if self.on_load:
-                sig = inspect.signature(self.on_load)
-                arg_map = {
-                    "state": state,
-                    "page": page,
-                    "view": v,
-                    **kwargs,
-                }
-                actual_args = [arg_map.get(name, None) for name in sig.parameters]
-                await self.on_load(*actual_args)
-            show_actual_view()
-
-        if self.on_load:
-            if asyncio.iscoroutinefunction(self.on_load):
-                page.run_task(async_loader)
-            else:
-                page.run_thread(sync_loader)
-        else:
-            show_actual_view()
-
-        return v
-
-
-VIEW_REGISTRY = []
-
-
-def view(route, state_class=None, on_load=None, **view_kwargs):
-    def decorator(func):
-        vp = ViewPattern(route, state_class, func, on_load, view_kwargs)
-        VIEW_REGISTRY.append(vp)
         return func
 
     return decorator
 
 
-_original_run = ft.run
+def match_route(pattern: str, path: str) -> Optional[Dict[str, str]]:
+    """
+    Match a route pattern against a path and extract parameters.
+
+    Args:
+        pattern: Route pattern like '/user/{user_id}'
+        path: Actual path like '/user/123'
+
+    Returns:
+        Dictionary of parameters if matched, None otherwise
+    """
+    pattern_parts = pattern.split('/')
+    path_parts = path.split('/')
+
+    if len(pattern_parts) != len(path_parts):
+        return None
+
+    params = {}
+    for pattern_part, path_part in zip(pattern_parts, path_parts):
+        if pattern_part.startswith('{') and pattern_part.endswith('}'):
+            param_name = pattern_part[1:-1]
+            params[param_name] = path_part
+        elif pattern_part != path_part:
+            return None
+
+    return params
 
 
-def enable_auto_routing(page: ft.Page):
-    # Track the last processed route to prevent duplicate processing
-    last_processed_route = {"route": None}
+def find_matching_route(path: str) -> Optional[tuple]:
+    """
+    Find a matching route pattern for the given path.
 
-    def on_route_change(e):
-        # Prevent duplicate processing of the same route
-        current_route = page.route
-        if last_processed_route["route"] == current_route:
+    Returns:
+        Tuple of (route_pattern, params_dict) if found, None otherwise
+    """
+    for route_pattern in _VIEW_REGISTRY.keys():
+        params = match_route(route_pattern, path)
+        if params is not None:
+            return (route_pattern, params)
+    return None
+
+
+def get_route_key(route: str, params: Dict[str, str]) -> str:
+    """Generate a unique key for a route with its parameters."""
+    if not params:
+        return route
+    param_str = ','.join(f"{k}={v}" for k, v in sorted(params.items()))
+    return f"{route}?{param_str}"
+
+
+async def call_on_load(on_load_func: Callable, state, page, params: Dict[str, str]):
+    """
+    Call the on_load function with appropriate parameters based on its signature.
+
+    Args:
+        on_load_func: The on_load function to call
+        state: The view state (if any)
+        page: The Flet page object
+        params: URL parameters extracted from the route
+    """
+    if on_load_func is None:
+        return
+
+    sig = inspect.signature(on_load_func)
+    param_names = list(sig.parameters.keys())
+
+    kwargs = {}
+    for param_name in param_names:
+        if param_name == 'state':
+            kwargs['state'] = state
+        elif param_name == 'page':
+            kwargs['page'] = page
+        elif param_name in params:
+            kwargs[param_name] = params[param_name]
+
+    if asyncio.iscoroutinefunction(on_load_func):
+        await on_load_func(**kwargs)
+    else:
+        on_load_func(**kwargs)
+
+
+@ft.observable
+@dataclass
+class AppModel:
+    """
+    Main application model that manages routing state.
+
+    Attributes:
+        routes: Stack of routes for navigation history
+        view_states: Dictionary storing state instances for each route
+        loaded_routes: Set of routes that have completed their on_load
+        loading_counter: Counter to track loading operations
+    """
+    routes: List[str] = field(default_factory=lambda: ['/'])
+    view_states: Dict[str, any] = field(default_factory=dict)
+    loaded_routes: set = field(default_factory=set)
+    loading_counter: int = 0
+
+    def route_change(self, e: ft.RouteChangeEvent):
+        """Handle route changes by maintaining a navigation stack."""
+        new_route = e.route
+
+        # Prevent adding duplicate consecutive routes
+        if self.routes and self.routes[-1] == new_route:
             return
 
-        last_processed_route["route"] = current_route
+        # Append new route to the stack
+        self.routes.append(new_route)
 
-        page.views.clear()
-        segments = [seg for seg in page.route.strip("/").split("/") if seg]
-        stack_routes = []
-        for i in range(len(segments)):
-            stack_routes.append("/" + "/".join(segments[: i + 1]))
-        if not stack_routes:
-            stack_routes = ["/"]
+        # Handle on_load for the new route
+        asyncio.create_task(self.handle_on_load(new_route))
 
-        for route in stack_routes:
-            found = False
-            for vp in VIEW_REGISTRY:
-                m = vp.match(route)
-                if m:
-                    found = True
-                    kwargs = m.groupdict()
-                    prev_route = page.route
-                    page.route = route
-                    page.views.append(vp.build(page, **kwargs))
-                    page.route = prev_route
-                    break
-            if not found:
-                page.views.append(ft.View(route=route, controls=[ft.Text("404 Not Found")]))
-        page.update()
+    async def handle_on_load(self, route: str):
+        """Handle on_load for the current route."""
+        config = None
+        params = {}
 
-    page.on_route_change = on_route_change
+        if route in _VIEW_REGISTRY:
+            config = _VIEW_REGISTRY[route]
+        else:
+            match_result = find_matching_route(route)
+            if match_result:
+                route_pattern, params = match_result
+                config = _VIEW_REGISTRY[route_pattern]
+
+        if config:
+            route_key = get_route_key(config['route'], params)
+
+            # Only call on_load if it hasn't been called for this route instance
+            if route_key not in self.loaded_routes and config.get('on_load'):
+                state = self.get_or_create_state(config['route'], config['state_class'])
+                page = ft.context.page
+
+                await call_on_load(config['on_load'], state, page, params)
+
+                self.loaded_routes.add(route_key)
+                self.loading_counter += 1
+
+    async def view_popped(self, e: ft.ViewPopEvent):
+        """Handle back navigation by popping from the routes stack."""
+        if len(self.routes) > 1:
+            # Remove the last route from the stack
+            self.routes.pop()
+
+            # Navigate to the new top of the stack
+            new_route = self.routes[-1]
+            await ft.context.page.push_route(new_route)
+
+    def get_or_create_state(self, route: str, state_class: Type):
+        """Get existing state or create new one for a route."""
+        if state_class is None:
+            return None
+
+        if route not in self.view_states:
+            self.view_states[route] = state_class()
+        return self.view_states[route]
 
 
-def run_with_auto_routing(main_func, *args, **kwargs):
-    def wrapped_main(page: ft.Page, *a, **kw):
-        enable_auto_routing(page)
-        return main_func(page, *a, **kw)
+def render_view_for_route(route: str, app: AppModel) -> ft.View:
+    """
+    Helper function to render a single view for a given route.
 
-    return _original_run(wrapped_main, *args, **kwargs)
+    Args:
+        route: The route path to render
+        app: The AppModel instance managing application state
+
+    Returns:
+        ft.View instance for the route
+    """
+    config = None
+    params = {}
+
+    # Try exact match first
+    if route in _VIEW_REGISTRY:
+        config = _VIEW_REGISTRY[route]
+    else:
+        # Try pattern matching
+        match_result = find_matching_route(route)
+        if match_result:
+            route_pattern, params = match_result
+            config = _VIEW_REGISTRY[route_pattern]
+
+    if not config:
+        # No matching route found, show 404
+        return ft.View(
+            route=route,
+            appbar=ft.AppBar(),
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            controls=[
+                ft.Icon(ft.Icons.ERROR_OUTLINE, size=100, color=ft.Colors.RED_400),
+                ft.Text("404 - Page Not Found", size=32, weight=ft.FontWeight.BOLD),
+            ]
+        )
+
+    route_key = get_route_key(config['route'], params)
+
+    # Check if on_load has completed (or doesn't exist)
+    if config.get('on_load') and route_key not in app.loaded_routes:
+        # Show loading view
+        return ft.View(
+            route=route,
+            controls=[ft.ProgressRing()],
+            vertical_alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            **config['view_kwargs']
+        )
+
+    # Get state
+    state = app.get_or_create_state(config['route'], config['state_class'])
+
+    # Call view function with appropriate parameters
+    if params:
+        # Parameterized route
+        if state is None:
+            controls = config['func'](**params)
+        else:
+            controls = config['func'](state, **params)
+    else:
+        # Static route
+        if state is None:
+            controls = config['func']()
+        else:
+            controls = config['func'](state)
+
+    return ft.View(
+        route=route,
+        controls=controls,
+        **config['view_kwargs']
+    )
 
 
-ft.run = run_with_auto_routing
+@ft.component
+def FletStack():
+    """
+    Main component that manages the routing stack and renders views.
+
+    Usage:
+        ft.run(lambda page: page.render(FletStack))
+
+        or
+
+        def main(page: ft.Page):
+            page.render_views(FletStack)
+        ft.run(main)
+    """
+    app, _ = ft.use_state(AppModel())
+
+    # Subscribe to page events
+    ft.context.page.on_route_change = app.route_change
+    ft.context.page.on_view_pop = app.view_popped
+
+    # Render all views in the routes stack
+    views = []
+    for route in app.routes:
+        views.append(render_view_for_route(route, app))
+
+    return views

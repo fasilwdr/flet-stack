@@ -14,7 +14,7 @@ with open(os.path.join(here, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="flet-stack",
-    version="0.1.0",
+    version="0.2.0",
     description="Decorator-based routing with view stacking for Flet applications",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -24,7 +24,7 @@ setup(
     license="MIT",
     packages=find_packages(exclude=["tests*", "examples*"]),
     install_requires=[
-        "flet>=0.70.0.dev6176",
+        "flet>=0.70.0.dev6281",
     ],
     python_requires=">=3.8",
     classifiers=[
