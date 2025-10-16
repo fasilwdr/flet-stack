@@ -15,6 +15,7 @@
 - 🎨 **URL parameters** - Extract parameters from routes like `/user/{id}`
 - 🧩 **Component-based architecture** - Uses Flet's modern `@ft.component` pattern
 - 🚀 **Simple setup** - Just call `page.render_views(FletStack)` in your app
+- 🔐 **Custom initial routes** - Start your app at any route
 
 ## Requirements
 
@@ -38,7 +39,7 @@ pip install git+https://github.com/fasilwdr/flet-stack.git
 ### Install Specific Version
 
 ```bash
-pip install git+https://github.com/fasilwdr/flet-stack.git@v0.2.0
+pip install git+https://github.com/fasilwdr/flet-stack.git@v0.2.1
 ```
 
 ### From Source
@@ -218,6 +219,19 @@ def item_view(category, item_id):
     ]
 ```
 
+### Setting Initial Route
+
+You can start your app at any route instead of the default `/`:
+
+```python
+def main(page: ft.Page):
+    page.title = "My App"
+    page.route = "/login"  # Start at login page
+    page.render_views(FletStack)
+
+ft.run(main)
+```
+
 ## API Reference
 
 ### `@view` Decorator
@@ -243,6 +257,7 @@ ft.run(lambda page: page.render_views(FletStack))
 # Option 2: In main function
 def main(page: ft.Page):
     page.title = "My App"
+    page.route = "/login"  # Optional: Set initial route
     page.render_views(FletStack)
 
 ft.run(main)
@@ -280,6 +295,7 @@ Check the `examples/` directory for more detailed examples:
 3. Handles state management with observable dataclasses
 4. Manages async/sync loading with automatic progress indicators
 5. Renders views with proper navigation support
+6. Supports custom initial routes via `page.route`
 
 ## Contributing
 
