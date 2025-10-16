@@ -125,15 +125,30 @@ class AppModel:
         view_states: Dictionary storing state instances for each route
         loaded_routes: Set of routes that have completed their on_load
         loading_counter: Counter to track loading operations
+        initialized: Flag to track if initial route has been set
     """
-    routes: List[str] = field(default_factory=lambda: ['/'])
+    routes: List[str] = field(default_factory=list)
     view_states: Dict[str, any] = field(default_factory=dict)
     loaded_routes: set = field(default_factory=set)
     loading_counter: int = 0
+    initialized: bool = False
+
+    def initialize_with_route(self, initial_route: str):
+        """Initialize the app with a specific route."""
+        if not self.initialized:
+            self.routes = [initial_route]
+            self.initialized = True
+            # Trigger initial on_load
+            asyncio.create_task(self.handle_on_load(initial_route))
 
     def route_change(self, e: ft.RouteChangeEvent):
         """Handle route changes by maintaining a navigation stack."""
         new_route = e.route
+
+        # If not initialized yet, initialize with this route
+        if not self.initialized:
+            self.initialize_with_route(new_route)
+            return
 
         # Prevent adding duplicate consecutive routes
         if self.routes and self.routes[-1] == new_route:
@@ -270,15 +285,24 @@ def FletStack():
     Main component that manages the routing stack and renders views.
 
     Usage:
-        ft.run(lambda page: page.render(FletStack))
+        ft.run(lambda page: page.render_views(FletStack))
 
         or
 
         def main(page: ft.Page):
+            page.route = "/login"  # Set initial route
             page.render_views(FletStack)
         ft.run(main)
     """
     app, _ = ft.use_state(AppModel())
+
+    # Check for initial route from page.route
+    if not app.initialized:
+        initial_route = ft.context.page.route
+        if initial_route and initial_route != "/":
+            app.initialize_with_route(initial_route)
+        else:
+            app.initialize_with_route("/")
 
     # Subscribe to page events
     ft.context.page.on_route_change = app.route_change

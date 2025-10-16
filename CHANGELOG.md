@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2025-10-16
+
+### Added
+- Support for custom initial routes via `page.route`
+- `initialize_with_route()` method in `AppModel` for explicit route initialization
+- `initialized` flag to track route initialization state
+- Better support for authentication flows and deep linking
+
+### Fixed
+- Initial route was always defaulting to `/` regardless of `page.route` setting
+- Routes list initialization now respects the page's initial route
+- Proper `on_load` trigger for custom initial routes
+
+### Improved
+- Documentation updated with examples for setting initial routes
+- Enhanced initialization logic to prevent route duplication on startup
+
 ## [0.2.0] - 2025-10-16
 
 ### 🚨 Breaking Changes
@@ -66,5 +83,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Flexible parameter injection for view functions
 - Regex-based route matching with named groups
 
+[0.2.1]: https://github.com/fasilwdr/flet-stack/releases/tag/v0.2.1
 [0.2.0]: https://github.com/fasilwdr/flet-stack/releases/tag/v0.2.0
 [0.1.0]: https://github.com/fasilwdr/flet-stack/releases/tag/v0.1.0
