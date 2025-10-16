@@ -1,31 +1,26 @@
 """
-flet-stack: Decorator-based routing with view stacking for Flet applications.
+flet-stack: Component-based routing with automatic view stacking for Flet applications.
 
 A lightweight routing library that provides:
-- Decorator-based route definitions
-- Automatic view stacking from URL paths
-- Built-in state management
-- Async loading support
+- Decorator-based route definitions with @view
+- Automatic view stacking for navigation
+- Built-in state management with @ft.observable dataclasses
+- Async and sync loading support
 - URL parameter extraction
+- Component-based architecture using @ft.component
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "Fasil"
 __email__ = "fasilwdr@hotmail.com"
 __license__ = "MIT"
 
 from .router import (
     view,
-    enable_auto_routing,
-    run_with_auto_routing,
-    ViewPattern,
-    VIEW_REGISTRY,
+    FletStack
 )
 
 __all__ = [
     "view",
-    "enable_auto_routing",
-    "run_with_auto_routing",
-    "ViewPattern",
-    "VIEW_REGISTRY",
+    "FletStack"
 ]

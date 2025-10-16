@@ -3,58 +3,60 @@ Advanced example demonstrating state management and async data loading with flet
 """
 
 import asyncio
+from dataclasses import dataclass
 import flet as ft
-from flet_stack import view
+from flet_stack import view, FletStack
 
 
 # --- Counter Example with State Management ---
+@ft.observable
+@dataclass
 class CounterState:
-    def __init__(self):
-        self.count = 0
+    count = 0
+
+    def increment(self, e):
+        self.count += 1
+
+    def decrement(self, e):
+        self.count -= 1
 
 
-@view("/", state_class=CounterState)
-def home_view(state, page):
-    def increment(e):
-        state.count += 1
-        page.update()
-
-    def decrement(e):
-        state.count -= 1
-        page.update()
-
-    return ft.Column(
-        [
-            ft.Text("Counter App", size=40, weight=ft.FontWeight.BOLD),
-            ft.Text(f"Count: {state.count}", size=30),
-            ft.Row(
-                [
-                    ft.Button("Decrement", on_click=decrement, icon=ft.Icons.REMOVE),
-                    ft.Button("Increment", on_click=increment, icon=ft.Icons.ADD),
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
+@view(route="/", state_class=CounterState, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+@ft.component
+def home_view(state):
+    return [
+        ft.Text("Counter App", size=40, weight=ft.FontWeight.BOLD),
+        ft.Text(f"Count: {state.count}", size=30),
+        ft.Row(
+            [
+                ft.Button("Decrement", on_click=state.decrement, icon=ft.Icons.REMOVE),
+                ft.Button("Increment", on_click=state.increment, icon=ft.Icons.ADD),
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+        ),
+        ft.Divider(),
+        ft.Button(
+            "View Products",
+            on_click=lambda _: asyncio.create_task(
+                ft.context.page.push_route("/products")
             ),
-            ft.Divider(),
-            ft.Button(
-                "View Products",
-                on_click=lambda _: page.go("/products"),
-                icon=ft.Icons.SHOPPING_CART,
+            icon=ft.Icons.SHOPPING_CART,
+        ),
+        ft.Button(
+            "View User 42",
+            on_click=lambda _: asyncio.create_task(
+                ft.context.page.push_route("/user/42")
             ),
-            ft.Button(
-                "View User 42",
-                on_click=lambda _: page.go("/user/42"),
-                icon=ft.Icons.PERSON,
-            ),
-        ],
-        spacing=20,
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-    )
+            icon=ft.Icons.PERSON,
+        ),
+    ]
 
 
 # --- Products List with Async Loading ---
+@ft.observable
+@dataclass
 class ProductsState:
-    def __init__(self):
-        self.products = []
+    products = []
 
 
 async def load_products(state):
@@ -68,51 +70,48 @@ async def load_products(state):
     ]
 
 
-@view("/products", state_class=ProductsState, on_load=load_products)
-def products_view(state, page):
-    return ft.Column(
-        [
-            ft.Text("Products", size=40, weight=ft.FontWeight.BOLD),
-            ft.Text("Available items:", size=16),
-            ft.Divider(),
-            ft.Column(
-                [
-                    ft.Card(
-                        ft.Container(
-                            ft.Column(
-                                [
-                                    ft.Text(product["name"], size=20, weight=ft.FontWeight.BOLD),
-                                    ft.Text(f"${product['price']}", size=16),
-                                    ft.Button(
-                                        "View Details",
-                                        on_click=lambda _, pid=product["id"]: page.go(
-                                            f"/products/{pid}"
-                                        ),
-                                    ),
-                                ]
-                            ),
-                            padding=15,
-                        )
+@view("/products", state_class=ProductsState, on_load=load_products, appbar=ft.AppBar())
+@ft.component
+def products_view(state):
+    def on_click_product(e):
+        asyncio.create_task(
+            ft.context.page.push_route(f"/products/{e.control.data}")
+        )
+    return [
+        ft.Text("Products", size=40, weight=ft.FontWeight.BOLD),
+        ft.Text("Available items:", size=16),
+        ft.Divider(),
+        ft.ListView(
+            expand=True,
+            controls=[
+                ft.Card(
+                    ft.Container(
+                        ft.Column(
+                            [
+                                ft.Text(product["name"], size=20, weight=ft.FontWeight.BOLD),
+                                ft.Text(f"${product['price']}", size=16),
+                                ft.Button(
+                                    "View Details",
+                                    data=product['id'],
+                                    on_click=on_click_product
+                                ),
+                            ]
+                        ),
+                        padding=15,
                     )
-                    for product in state.products
-                ],
-                spacing=10,
-            ),
-            ft.Divider(),
-            ft.Button(
-                "Back to Home", on_click=lambda _: page.go("/"), icon=ft.Icons.HOME
-            ),
-        ],
-        spacing=20,
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-        scroll=ft.ScrollMode.AUTO,
-    )
+                )
+                for product in state.products
+            ],
+            spacing=10,
+        ),
+    ]
 
 
 # --- Product Detail with URL Parameter ---
+@ft.observable
+@dataclass
 class ProductDetailState:
-    def __init__(self):
-        self.product = None
+    product = None
 
 
 async def load_product_detail(state, product_id):
@@ -129,44 +128,26 @@ async def load_product_detail(state, product_id):
 
 
 @view(
-    "/products/{product_id}", state_class=ProductDetailState, on_load=load_product_detail
+    "/products/{product_id}", state_class=ProductDetailState, on_load=load_product_detail, appbar=ft.AppBar()
 )
-def product_detail_view(state, page, product_id):
-    return ft.Column(
-        [
-            ft.Text("Product Details", size=40, weight=ft.FontWeight.BOLD),
-            ft.Divider(),
-            ft.Text(state.product["name"], size=30),
-            ft.Text(f"Price: ${state.product['price']}", size=20),
-            ft.Text(
-                state.product.get("description", "No description"),
-                size=16,
-                color=ft.Colors.GREY,
-            ),
-            ft.Divider(),
-            ft.Row(
-                [
-                    ft.Button(
-                        "Back to Products",
-                        on_click=lambda _: page.go("/products"),
-                        icon=ft.Icons.ARROW_BACK,
-                    ),
-                    ft.Button(
-                        "Home", on_click=lambda _: page.go("/"), icon=ft.Icons.HOME
-                    ),
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
-            ),
-        ],
-        spacing=20,
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-    )
+@ft.component
+def product_detail_view(state, product_id):
+    return [
+        ft.Text("Product Details", size=40, weight=ft.FontWeight.BOLD),
+        ft.Divider(),
+        ft.Text(state.product["name"], size=30),
+        ft.Text(f"Price: ${state.product['price']}", size=20),
+        ft.Text(
+            state.product.get("description", "No description"),
+            size=16,
+            color=ft.Colors.GREY,
+        )
+    ]
 
 
 # --- User Profile with Async Loading ---
 class UserState:
-    def __init__(self):
-        self.user = None
+    user = None
 
 
 async def load_user(state, user_id):
@@ -180,24 +161,17 @@ async def load_user(state, user_id):
     }
 
 
-@view("/user/{user_id}", state_class=UserState, on_load=load_user)
-def user_view(state, page, user_id):
-    return ft.Column(
-        [
-            ft.Text("User Profile", size=40, weight=ft.FontWeight.BOLD),
-            ft.Divider(),
-            ft.Text(f"Name: {state.user['name']}", size=20),
-            ft.Text(f"Email: {state.user['email']}", size=16),
-            ft.Text(f"User ID: {state.user['id']}", size=16),
-            ft.Text(f"Joined: {state.user['joined']}", size=16, color=ft.Colors.GREY),
-            ft.Divider(),
-            ft.Button(
-                "Back to Home", on_click=lambda _: page.go("/"), icon=ft.Icons.HOME
-            ),
-        ],
-        spacing=20,
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-    )
+@view("/user/{user_id}", state_class=UserState, on_load=load_user, appbar=ft.AppBar())
+@ft.component
+def user_view(state, user_id):
+    return [
+        ft.Text("User Profile", size=40, weight=ft.FontWeight.BOLD),
+        ft.Divider(),
+        ft.Text(f"Name: {state.user['name']}", size=20),
+        ft.Text(f"Email: {state.user['email']}", size=16),
+        ft.Text(f"User ID: {state.user['id']}", size=16),
+        ft.Text(f"Joined: {state.user['joined']}", size=16, color=ft.Colors.GREY),
+    ]
 
 
 def main(page: ft.Page):
@@ -205,7 +179,7 @@ def main(page: ft.Page):
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.padding = 20
-    page.go("/")
+    page.render_views(FletStack)
 
 
 if __name__ == "__main__":
