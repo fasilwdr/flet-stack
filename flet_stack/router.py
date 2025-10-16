@@ -251,8 +251,7 @@ def render_view_for_route(route: str, app: AppModel) -> ft.View:
             route=route,
             controls=[ft.ProgressRing()],
             vertical_alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            **config['view_kwargs']
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
 
     # Get state
