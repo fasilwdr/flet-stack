@@ -10,7 +10,7 @@ A lightweight routing library that provides:
 - Component-based architecture using @ft.component
 """
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 __author__ = "Fasil"
 __email__ = "fasilwdr@hotmail.com"
 __license__ = "MIT"

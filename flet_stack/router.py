@@ -16,7 +16,7 @@ def view(route: str, state_class: Type = None, on_load: Optional[Callable] = Non
         route: The route path for this view (e.g., '/', '/store', '/user/{user_id}')
         state_class: Optional dataclass for view-specific state (should be decorated with @ft.observable)
         on_load: Optional function to call before rendering the view (can be async).
-                 Function can accept: state, page, and any URL parameters
+                 Function can accept: state, page, view, and any URL parameters
         **view_kwargs: Additional keyword arguments to pass to ft.View (e.g., appbar, bgcolor, padding)
     """
 
@@ -83,7 +83,25 @@ def get_route_key(route: str, params: Dict[str, str]) -> str:
     return f"{route}?{param_str}"
 
 
-async def call_on_load(on_load_func: Callable, state, page, params: Dict[str, str]):
+class ViewProxy:
+    """Proxy class to allow updating view properties in on_load."""
+
+    def __init__(self, view_kwargs: dict):
+        self._view_kwargs = view_kwargs
+
+    def __setattr__(self, name, value):
+        if name.startswith('_'):
+            super().__setattr__(name, value)
+        else:
+            self._view_kwargs[name] = value
+
+    def __getattr__(self, name):
+        if name.startswith('_'):
+            return super().__getattribute__(name)
+        return self._view_kwargs.get(name)
+
+
+async def call_on_load(on_load_func: Callable, state, page, view_proxy: ViewProxy, params: Dict[str, str]):
     """
     Call the on_load function with appropriate parameters based on its signature.
 
@@ -91,6 +109,7 @@ async def call_on_load(on_load_func: Callable, state, page, params: Dict[str, st
         on_load_func: The on_load function to call
         state: The view state (if any)
         page: The Flet page object
+        view_proxy: Proxy object to update view properties
         params: URL parameters extracted from the route
     """
     if on_load_func is None:
@@ -105,6 +124,8 @@ async def call_on_load(on_load_func: Callable, state, page, params: Dict[str, st
             kwargs['state'] = state
         elif param_name == 'page':
             kwargs['page'] = page
+        elif param_name == 'view':
+            kwargs['view'] = view_proxy
         elif param_name in params:
             kwargs[param_name] = params[param_name]
 
@@ -123,12 +144,14 @@ class AppModel:
     Attributes:
         routes: Stack of routes for navigation history
         view_states: Dictionary storing state instances for each route
+        view_kwargs_cache: Dictionary storing updated view kwargs for each route
         loaded_routes: Set of routes that have completed their on_load
         loading_counter: Counter to track loading operations
         initialized: Flag to track if initial route has been set
     """
     routes: List[str] = field(default_factory=list)
     view_states: Dict[str, any] = field(default_factory=dict)
+    view_kwargs_cache: Dict[str, dict] = field(default_factory=dict)
     loaded_routes: set = field(default_factory=set)
     loading_counter: int = 0
     initialized: bool = False
@@ -181,7 +204,14 @@ class AppModel:
                 state = self.get_or_create_state(config['route'], config['state_class'])
                 page = ft.context.page
 
-                await call_on_load(config['on_load'], state, page, params)
+                # Create a copy of view_kwargs for this route instance
+                view_kwargs = config['view_kwargs'].copy()
+                view_proxy = ViewProxy(view_kwargs)
+
+                await call_on_load(config['on_load'], state, page, view_proxy, params)
+
+                # Store the updated view_kwargs for this route
+                self.view_kwargs_cache[route_key] = view_kwargs
 
                 self.loaded_routes.add(route_key)
                 self.loading_counter += 1
@@ -204,6 +234,12 @@ class AppModel:
         if route not in self.view_states:
             self.view_states[route] = state_class()
         return self.view_states[route]
+
+    def get_view_kwargs(self, route_key: str, default_kwargs: dict) -> dict:
+        """Get view kwargs for a route, using cached version if available."""
+        if route_key in self.view_kwargs_cache:
+            return self.view_kwargs_cache[route_key]
+        return default_kwargs.copy()
 
 
 def render_view_for_route(route: str, app: AppModel) -> ft.View:
@@ -257,6 +293,9 @@ def render_view_for_route(route: str, app: AppModel) -> ft.View:
     # Get state
     state = app.get_or_create_state(config['route'], config['state_class'])
 
+    # Get view_kwargs - use cached version if available (may be modified by on_load)
+    view_kwargs = app.get_view_kwargs(route_key, config['view_kwargs'])
+
     # Call view function with appropriate parameters
     if params:
         # Parameterized route
@@ -274,7 +313,7 @@ def render_view_for_route(route: str, app: AppModel) -> ft.View:
     return ft.View(
         route=route,
         controls=controls,
-        **config['view_kwargs']
+        **view_kwargs
     )
 
 

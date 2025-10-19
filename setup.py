@@ -14,7 +14,7 @@ with open(os.path.join(here, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="flet-stack",
-    version="0.2.2",
+    version="0.2.3",
     description="Decorator-based routing with view stacking for Flet applications",
     long_description=long_description,
     long_description_content_type="text/markdown",

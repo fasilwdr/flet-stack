@@ -39,7 +39,7 @@ pip install git+https://github.com/fasilwdr/flet-stack.git
 ### Install Specific Version
 
 ```bash
-pip install git+https://github.com/fasilwdr/flet-stack.git@v0.2.2
+pip install git+https://github.com/fasilwdr/flet-stack.git@v0.2.3
 ```
 
 ### From Source
@@ -139,7 +139,7 @@ Load data asynchronously before showing your view:
 class UserState:
     user_data: dict = None
 
-async def load_user_data(state, user_id):
+async def load_user_data(state, view, user_id):
     # Simulate API call
     await asyncio.sleep(1)
     state.user_data = {
@@ -147,6 +147,8 @@ async def load_user_data(state, user_id):
         "name": f"User {user_id}",
         "email": f"user{user_id}@example.com"
     }
+    # Update the appbar title dynamically
+    view.appbar = ft.AppBar(title=ft.Text(state.user_data['name']))
 
 @view("/user/{user_id}", state_class=UserState, on_load=load_user_data)
 @ft.component
@@ -158,7 +160,7 @@ def user_detail_view(state, user_id):
     ]
 ```
 
-While loading, a progress indicator is automatically displayed.
+The `view` parameter in `on_load` allows you to update any view property dynamically, including appbar, bgcolor, padding, and more.
 
 ### Sync Data Loading
 
@@ -243,7 +245,8 @@ ft.run(main)
 - **route**: The route path for this view (e.g., `/`, `/user/{user_id}`)
 - **state_class**: Optional dataclass decorated with `@ft.observable` for state management
 - **on_load**: Optional function to call before rendering (can be async)
-  - Can accept parameters: `state`, `page`, and any URL parameters
+  - Can accept parameters: `state`, `page`, `view`, and any URL parameters
+  - The `view` parameter is a proxy object that allows updating view properties
 - **view_kwargs**: Additional kwargs passed to `ft.View` (e.g., `appbar`, `bgcolor`, `padding`)
 
 ### `FletStack` Component
@@ -296,6 +299,7 @@ Check the `examples/` directory for more detailed examples:
 4. Manages async/sync loading with automatic progress indicators
 5. Renders views with proper navigation support
 6. Supports custom initial routes via `page.route`
+7. Allows dynamic property updates via the `state`, `page`, `view` parameter in `on_load`
 
 ## Contributing
 
