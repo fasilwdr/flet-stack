@@ -1,26 +1,20 @@
 """
-flet-stack: Component-based routing with automatic view stacking for Flet applications.
+flet-stack: A simple routing package for Flet applications.
 
-A lightweight routing library that provides:
-- Decorator-based route definitions with @view
-- Automatic view stacking for navigation
-- Built-in state management with @ft.observable dataclasses
-- Async and sync loading support
-- URL parameter extraction
-- Component-based architecture using @ft.component
+This package provides decorator-based routing for Flet v1 applications with
+support for stack navigation and view management.
+
+Usage:
+    from flet_stack import route, FletStack
+
+    @route('/')
+    def home_view():
+        return ft.View(...)
+
+    ft.run(lambda page: page.render_views(FletStack))
 """
 
-__version__ = "0.2.3"
-__author__ = "Fasil"
-__email__ = "fasilwdr@hotmail.com"
-__license__ = "MIT"
+from .router import route, FletStack
 
-from .router import (
-    view,
-    FletStack
-)
-
-__all__ = [
-    "view",
-    "FletStack"
-]
+__version__ = "0.1.0"
+__all__ = ["route", "FletStack"]
