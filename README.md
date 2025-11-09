@@ -1,21 +1,32 @@
 # flet-stack
 
-**Component-based routing with automatic view stacking for Flet applications.**
+**Simple, intuitive routing with automatic view stacking for Flet applications.**
 
 [![PyPI version](https://badge.fury.io/py/flet-stack.svg)](https://badge.fury.io/py/flet-stack)
 [![Python versions](https://img.shields.io/pypi/pyversions/flet-stack.svg)](https://pypi.org/project/flet-stack/)
 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/flet-stack?period=total&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=BLUE&left_text=downloads)](https://pepy.tech/projects/flet-stack)
 
+## ✨ What's New in 0.3.0
+
+Version 0.3.0 brings a major simplification to the API:
+
+- 🎯 **Even simpler routing** - Views are now just functions that return `ft.View` objects
+- 🔄 **Stack navigation** - Use `+/route` to stack views, `/route` to replace the entire stack
+- ❌ **No more `@ft.component`** - Just simple functions, no decorator boilerplate
+- ⚡ **Automatic reactivity** - State changes trigger re-renders automatically
+- 🧹 **Cleaner code** - Less boilerplate, more straightforward
+
+**[See the migration guide](#migration-from-02x) if upgrading from 0.2.x**
 
 ## Features
 
-- 🎯 **Decorator-based routing** - Clean, intuitive `@view()` decorator for route definitions
-- 🔄 **Observable state management** - Built-in state management using `@ft.observable` dataclasses
+- 🎯 **Decorator-based routing** - Clean `@route()` decorator for route definitions
+- 📚 **Stack navigation** - Intuitive stack vs replace navigation with "+" prefix
+- 🔄 **Observable state management** - Built-in state with `@ft.observable` dataclasses
 - ⚡ **Async support** - Handle async data loading with automatic loading indicators
 - 🎨 **URL parameters** - Extract parameters from routes like `/user/{id}`
-- 🧩 **Component-based architecture** - Uses Flet's modern `@ft.component` pattern
 - 🚀 **Simple setup** - Just call `page.render_views(FletStack)` in your app
-- 🔐 **Custom initial routes** - Start your app at any route
+- 🔗 **No boilerplate** - Views are simple functions returning `ft.View` objects
 
 ## Requirements
 
@@ -39,7 +50,7 @@ pip install git+https://github.com/fasilwdr/flet-stack.git
 ### Install Specific Version
 
 ```bash
-pip install git+https://github.com/fasilwdr/flet-stack.git@v0.2.3
+pip install git+https://github.com/fasilwdr/flet-stack.git@v0.3.0
 ```
 
 ### From Source
@@ -54,35 +65,75 @@ pip install .
 
 ```python
 import flet as ft
-from flet_stack import view, FletStack
+from flet_stack import route, FletStack
 import asyncio
 
-# Define your routes with the @view decorator
-@view("/")
-@ft.component
+# Define your routes with the @route decorator
+@route("/")
 def home_view():
-    return [
-        ft.Text("Home Page", size=30),
-        ft.Button(
-            "Go to Profile",
-            on_click=lambda _: asyncio.create_task(
-                ft.context.page.push_route("/profile")
-            )
-        ),
-    ]
+    return ft.View(
+        appbar=ft.AppBar(title=ft.Text("Home")),
+        controls=[
+            ft.Text("Home Page", size=30),
+            ft.Button(
+                "Go to Profile",
+                on_click=lambda _: asyncio.create_task(
+                    ft.context.page.push_route("+/profile")
+                )
+            ),
+        ]
+    )
 
-@view("/profile", appbar=ft.AppBar())
-@ft.component
+@route("/profile")
 def profile_view():
-    return [
-        ft.Text("Profile Page", size=30),
-    ]
+    return ft.View(
+        appbar=ft.AppBar(title=ft.Text("Profile")),
+        controls=[
+            ft.Text("Profile Page", size=30),
+        ]
+    )
 
 # Run your app
 ft.run(lambda page: page.render_views(FletStack))
 ```
 
-That's it! The routing is automatically handled by FletStack.
+That's it! Clean, simple routing with no boilerplate.
+
+## Navigation: Stack vs Replace
+
+flet-stack supports two navigation modes:
+
+### Stack Navigation (Add to Stack)
+
+Use the **"+" prefix** to add a view on top of the current stack:
+
+```python
+# Adds /profile on top of the current view
+asyncio.create_task(ft.context.page.push_route("+/profile"))
+
+# User can press back to return to previous view
+```
+
+### Replace Navigation (Replace Stack)
+
+Use **no prefix** to replace the entire navigation stack:
+
+```python
+# Replaces entire stack with just /home
+asyncio.create_task(ft.context.page.push_route("/home"))
+
+# Previous views are cleared - back button goes to previous view in new stack
+```
+
+**Common Pattern:**
+
+```python
+# From home, stack other views
+ft.Button("Products", on_click=lambda _: push_route("+/products"))
+
+# From anywhere, return home (clearing stack)
+ft.IconButton(icon=ft.Icons.HOME, on_click=lambda _: push_route("/"))
+```
 
 ## Advanced Usage
 
@@ -91,17 +142,19 @@ That's it! The routing is automatically handled by FletStack.
 Extract parameters from your routes:
 
 ```python
-@view("/user/{user_id}")
-@ft.component
+@route("/user/{user_id}")
 def user_view(user_id):
-    return [
-        ft.Text(f"User Profile: {user_id}", size=30),
-    ]
+    return ft.View(
+        appbar=ft.AppBar(title=ft.Text(f"User {user_id}")),
+        controls=[
+            ft.Text(f"User Profile: {user_id}", size=30),
+        ]
+    )
 ```
 
 ### State Management
 
-Use observable dataclasses to manage component state:
+Use observable dataclasses to manage component state. State automatically triggers re-renders when methods are called:
 
 ```python
 from dataclasses import dataclass
@@ -117,17 +170,21 @@ class CounterState:
     def decrement(self, e):
         self.count -= 1
 
-@view("/counter", state_class=CounterState, appbar=ft.AppBar())
-@ft.component
+@route("/counter", state_class=CounterState)
 def counter_view(state):
-    return [
-        ft.Text(f"Count: {state.count}", size=30),
-        ft.Row([
-            ft.Button("Decrement", on_click=state.decrement),
-            ft.Button("Increment", on_click=state.increment),
-        ]),
-    ]
+    return ft.View(
+        appbar=ft.AppBar(title=ft.Text("Counter")),
+        controls=[
+            ft.Text(f"Count: {state.count}", size=30),
+            ft.Row([
+                ft.Button("Decrement", on_click=state.decrement),
+                ft.Button("Increment", on_click=state.increment),
+            ]),
+        ]
+    )
 ```
+
+**State automatically triggers re-renders** when you call methods like `increment()` or `decrement()` - no manual update needed!
 
 ### Async Data Loading
 
@@ -139,7 +196,7 @@ Load data asynchronously before showing your view:
 class UserState:
     user_data: dict = None
 
-async def load_user_data(state, view, user_id):
+async def load_user_data(state, user_id):
     # Simulate API call
     await asyncio.sleep(1)
     state.user_data = {
@@ -147,28 +204,28 @@ async def load_user_data(state, view, user_id):
         "name": f"User {user_id}",
         "email": f"user{user_id}@example.com"
     }
-    # Update the appbar title dynamically
-    view.appbar = ft.AppBar(title=ft.Text(state.user_data['name']))
 
-@view("/user/{user_id}", state_class=UserState, on_load=load_user_data)
-@ft.component
-def user_detail_view(state, user_id):    
-    return [
-        ft.Text(f"Name: {state.user_data['name']}", size=20),
-        ft.Text(f"Email: {state.user_data['email']}", size=16),
-        ft.Text(f"ID: {state.user_data['id']}", size=16),
-    ]
+@route("/user/{user_id}", state_class=UserState, on_load=load_user_data)
+def user_detail_view(state, user_id):
+    return ft.View(
+        appbar=ft.AppBar(title=ft.Text(state.user_data['name'])),
+        controls=[
+            ft.Text(f"Name: {state.user_data['name']}", size=20),
+            ft.Text(f"Email: {state.user_data['email']}", size=16),
+            ft.Text(f"ID: {state.user_data['id']}", size=16),
+        ]
+    )
 ```
 
-The `view` parameter in `on_load` allows you to update any view property dynamically, including appbar, bgcolor, padding, and more.
+While `on_load` executes, a loading spinner is automatically displayed.
 
 ### Sync Data Loading
 
 You can also use synchronous loading functions:
 
 ```python
-def load_item_info(state, category, item_id, page):
-    """Sync data loading with access to page object"""
+def load_item_info(state, category, item_id):
+    """Sync data loading"""
     state.info = {
         "category": category.capitalize(),
         "item_id": item_id,
@@ -176,35 +233,19 @@ def load_item_info(state, category, item_id, page):
         "price": f"${int(item_id) * 10}.99"
     }
 
-@view(
+@route(
     "/category/{category}/item/{item_id}",
     state_class=ItemState,
     on_load=load_item_info
 )
-@ft.component
 def item_view(state, category, item_id):
-    return [
-        ft.Text(f"{state.info['name']}", size=20),
-        ft.Text(f"Price: {state.info['price']}", size=18),
-    ]
-```
-
-### View Configuration
-
-Pass additional Flet view properties:
-
-```python
-@view(
-    "/settings",
-    appbar=ft.AppBar(title=ft.Text("Settings")),
-    bgcolor=ft.Colors.BLUE_GREY_50,
-    padding=20,
-    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-    vertical_alignment=ft.MainAxisAlignment.CENTER,
-)
-@ft.component
-def settings_view():
-    return [ft.Text("Settings", size=30)]
+    return ft.View(
+        appbar=ft.AppBar(title=ft.Text(state.info['name'])),
+        controls=[
+            ft.Text(f"{state.info['name']}", size=20),
+            ft.Text(f"Price: {state.info['price']}", size=18),
+        ]
+    )
 ```
 
 ### Multiple URL Parameters
@@ -212,13 +253,15 @@ def settings_view():
 Handle routes with multiple parameters:
 
 ```python
-@view("/category/{category}/item/{item_id}")
-@ft.component
+@route("/category/{category}/item/{item_id}")
 def item_view(category, item_id):
-    return [
-        ft.Text(f"Category: {category}", size=20),
-        ft.Text(f"Item ID: {item_id}", size=20),
-    ]
+    return ft.View(
+        appbar=ft.AppBar(title=ft.Text(f"{category} Items")),
+        controls=[
+            ft.Text(f"Category: {category}", size=20),
+            ft.Text(f"Item ID: {item_id}", size=20),
+        ]
+    )
 ```
 
 ### Setting Initial Route
@@ -236,18 +279,18 @@ ft.run(main)
 
 ## API Reference
 
-### `@view` Decorator
+### `@route` Decorator
 
 ```python
-@view(route: str, state_class: Type = None, on_load: Optional[Callable] = None, **view_kwargs)
+@route(path: str, state_class: Type = None, on_load: Optional[Callable] = None)
 ```
 
-- **route**: The route path for this view (e.g., `/`, `/user/{user_id}`)
+- **path**: The route path for this view (e.g., `/`, `/user/{user_id}`)
 - **state_class**: Optional dataclass decorated with `@ft.observable` for state management
 - **on_load**: Optional function to call before rendering (can be async)
-  - Can accept parameters: `state`, `page`, `view`, and any URL parameters
-  - The `view` parameter is a proxy object that allows updating view properties
-- **view_kwargs**: Additional kwargs passed to `ft.View` (e.g., `appbar`, `bgcolor`, `padding`)
+  - Parameters are automatically injected based on function signature
+  - Can accept: `state` (if state_class provided) and any URL parameters
+  - While executing, a loading view is displayed automatically
 
 ### `FletStack` Component
 
@@ -271,14 +314,17 @@ ft.run(main)
 Use `asyncio.create_task` with `ft.context.page.push_route`:
 
 ```python
-# Navigate to a route
-asyncio.create_task(ft.context.page.push_route("/profile"))
+# Stack navigation - add to current stack
+asyncio.create_task(ft.context.page.push_route("+/profile"))
+
+# Replace navigation - replace entire stack
+asyncio.create_task(ft.context.page.push_route("/"))
 
 # In button click handler
 ft.Button(
     "Go to Profile",
     on_click=lambda _: asyncio.create_task(
-        ft.context.page.push_route("/profile")
+        ft.context.page.push_route("+/profile")
     )
 )
 ```
@@ -293,13 +339,101 @@ Check the `examples/` directory for more detailed examples:
 
 **flet-stack** provides a `FletStack` component that:
 
-1. Registers all `@view` decorated functions
-2. Manages a navigation stack for route changes
-3. Handles state management with observable dataclasses
+1. Registers all `@route` decorated functions
+2. Manages a navigation stack with stack vs replace modes
+3. Handles state management with observable dataclasses and automatic re-renders
 4. Manages async/sync loading with automatic progress indicators
 5. Renders views with proper navigation support
 6. Supports custom initial routes via `page.route`
-7. Allows dynamic property updates via the `state`, `page`, `view` parameter in `on_load`
+7. Isolates state per route instance for parameterized routes
+
+## Migration from 0.2.x
+
+If you're upgrading from version 0.2.x, here are the key changes:
+
+### 1. Decorator Renamed
+
+```python
+# Before (0.2.x)
+from flet_stack import view
+
+# After (0.3.0)
+from flet_stack import route
+```
+
+### 2. Views Return ft.View Objects
+
+Views no longer return lists of controls wrapped in `@ft.component`. They now return `ft.View` objects directly:
+
+```python
+# Before (0.2.x)
+@view("/profile", appbar=ft.AppBar())
+@ft.component
+def profile_view():
+    return [
+        ft.Text("Profile"),
+        ft.Button("Click me")
+    ]
+
+# After (0.3.0)
+@route("/profile")
+def profile_view():
+    return ft.View(
+        appbar=ft.AppBar(),
+        controls=[
+            ft.Text("Profile"),
+            ft.Button("Click me")
+        ]
+    )
+```
+
+### 3. Stack Navigation Syntax
+
+Use the "+" prefix for stacking views:
+
+```python
+# Before (0.2.x) - always stacked
+asyncio.create_task(ft.context.page.push_route("/products"))
+
+# After (0.3.0) - explicit stack vs replace
+asyncio.create_task(ft.context.page.push_route("+/products"))  # Stack
+asyncio.create_task(ft.context.page.push_route("/"))  # Replace
+```
+
+### 4. Simplified on_load
+
+`on_load` no longer accepts `page` or `view` parameters:
+
+```python
+# Before (0.2.x)
+async def load_user(state, view, user_id):
+    state.user = fetch_user(user_id)
+    view.appbar = ft.AppBar(title=ft.Text(state.user['name']))
+
+# After (0.3.0)
+async def load_user(state, user_id):
+    state.user = fetch_user(user_id)
+    # Set appbar directly in view function
+```
+
+### 5. No More @ft.component
+
+Simply remove the `@ft.component` decorator:
+
+```python
+# Before (0.2.x)
+@view("/counter", state_class=CounterState)
+@ft.component
+def counter_view(state):
+    return [ft.Text(f"Count: {state.count}")]
+
+# After (0.3.0)
+@route("/counter", state_class=CounterState)
+def counter_view(state):
+    return ft.View(
+        controls=[ft.Text(f"Count: {state.count}")]
+    )
+```
 
 ## Contributing
 

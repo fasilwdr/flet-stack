@@ -316,8 +316,11 @@ def FletStack():
             pattern, params = match_result
             view_func, state_class, on_load_func = _route_registry[pattern]
 
-            # Check if route is currently loading
-            if on_load_func is not None and route_path in state.loading_routes:
+            # Check if route is currently loading OR needs to be loaded
+            if on_load_func is not None and (
+                route_path in state.loading_routes or
+                route_path not in state.loaded_routes
+            ):
                 # Show loading view while on_load executes
                 views.append(get_loading_view(route_path))
             else:
@@ -331,14 +334,18 @@ def FletStack():
                 # Build arguments for view function
                 args = []
 
-                # URL parameters come first (in the order they appear in function signature)
-                for param_name in param_names:
-                    if param_name in params:
-                        args.append(params[param_name])
-
-                # State comes last (if it exists and not already added as a param)
+                # State comes first (if it exists)
                 if route_state is not None:
                     args.append(route_state)
+                    # Remaining parameters are URL parameters (in order they appear in signature)
+                    for param_name in param_names[1:]:  # Skip first param which is state
+                        if param_name in params:
+                            args.append(params[param_name])
+                else:
+                    # All parameters are URL parameters (in order they appear in signature)
+                    for param_name in param_names:
+                        if param_name in params:
+                            args.append(params[param_name])
 
                 # Call the view function
                 view = view_func(*args)

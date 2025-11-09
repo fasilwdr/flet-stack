@@ -5,7 +5,7 @@ Advanced example demonstrating state management and async data loading with flet
 import asyncio
 from dataclasses import dataclass
 import flet as ft
-from flet_stack import view, FletStack
+from flet_stack import route, FletStack
 
 
 # --- Counter Example with State Management ---
@@ -21,35 +21,36 @@ class CounterState:
         self.count -= 1
 
 
-@view(route="/", state_class=CounterState, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
-@ft.component
+@route("/", state_class=CounterState)
 def home_view(state):
-    return [
-        ft.Text("Counter App", size=40, weight=ft.FontWeight.BOLD),
-        ft.Text(f"Count: {state.count}", size=30),
-        ft.Row(
-            [
-                ft.Button("Decrement", on_click=state.decrement, icon=ft.Icons.REMOVE),
-                ft.Button("Increment", on_click=state.increment, icon=ft.Icons.ADD),
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-        ),
-        ft.Divider(),
-        ft.Button(
-            "View Products",
-            on_click=lambda _: asyncio.create_task(
-                ft.context.page.push_route("/products")
+    return ft.View(
+        controls=[
+            ft.Text("Counter App", size=40, weight=ft.FontWeight.BOLD),
+            ft.Text(f"Count: {state.count}", size=30),
+            ft.Row(
+                [
+                    ft.Button("Decrement", on_click=state.decrement, icon=ft.Icons.REMOVE),
+                    ft.Button("Increment", on_click=state.increment, icon=ft.Icons.ADD),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
             ),
-            icon=ft.Icons.SHOPPING_CART,
-        ),
-        ft.Button(
-            "View User 42",
-            on_click=lambda _: asyncio.create_task(
-                ft.context.page.push_route("/user/42")
+            ft.Divider(),
+            ft.Button(
+                "View Products",
+                on_click=lambda _: asyncio.create_task(
+                    ft.context.page.push_route("+/products")
+                ),
+                icon=ft.Icons.SHOPPING_CART,
             ),
-            icon=ft.Icons.PERSON,
-        ),
-    ]
+            ft.Button(
+                "View User 42",
+                on_click=lambda _: asyncio.create_task(
+                    ft.context.page.push_route("+/user/42")
+                ),
+                icon=ft.Icons.PERSON,
+            ),
+        ]
+    )
 
 
 # --- Products List with Async Loading ---
@@ -70,41 +71,46 @@ async def load_products(state):
     ]
 
 
-@view("/products", state_class=ProductsState, on_load=load_products, appbar=ft.AppBar())
-@ft.component
+@route("/products", state_class=ProductsState, on_load=load_products)
 def products_view(state):
     def on_click_product(e):
         asyncio.create_task(
-            ft.context.page.push_route(f"/products/{e.control.data}")
+            ft.context.page.push_route(f"+/products/{e.control.data}")
         )
-    return [
-        ft.Text("Products", size=40, weight=ft.FontWeight.BOLD),
-        ft.Text("Available items:", size=16),
-        ft.Divider(),
-        ft.ListView(
-            expand=True,
-            controls=[
-                ft.Card(
-                    ft.Container(
-                        ft.Column(
-                            [
-                                ft.Text(product["name"], size=20, weight=ft.FontWeight.BOLD),
-                                ft.Text(f"${product['price']}", size=16),
-                                ft.Button(
-                                    "View Details",
-                                    data=product['id'],
-                                    on_click=on_click_product
-                                ),
-                            ]
-                        ),
-                        padding=15,
+
+    return ft.View(
+        appbar=ft.AppBar(actions=[ft.IconButton(icon=ft.Icons.HOME, on_click=lambda _: asyncio.create_task(
+            ft.context.page.push_route(f"/")
+        ))]),
+        controls=[
+            ft.Text("Products", size=40, weight=ft.FontWeight.BOLD),
+            ft.Text("Available items:", size=16),
+            ft.Divider(),
+            ft.ListView(
+                expand=True,
+                controls=[
+                    ft.Card(
+                        ft.Container(
+                            ft.Column(
+                                [
+                                    ft.Text(product["name"], size=20, weight=ft.FontWeight.BOLD),
+                                    ft.Text(f"${product['price']}", size=16),
+                                    ft.Button(
+                                        "View Details",
+                                        data=product['id'],
+                                        on_click=on_click_product
+                                    ),
+                                ]
+                            ),
+                            padding=15,
+                        )
                     )
-                )
-                for product in state.products
-            ],
-            spacing=10,
-        ),
-    ]
+                    for product in state.products
+                ],
+                spacing=10,
+            ),
+        ]
+    )
 
 
 # --- Product Detail with URL Parameter ---
@@ -127,22 +133,24 @@ async def load_product_detail(state, product_id):
     state.product = products.get(product_id, {"name": "Not Found", "price": 0})
 
 
-@view(
-    "/products/{product_id}", state_class=ProductDetailState, on_load=load_product_detail, appbar=ft.AppBar()
+@route(
+    "/products/{product_id}", state_class=ProductDetailState, on_load=load_product_detail
 )
-@ft.component
 def product_detail_view(state, product_id):
-    return [
-        ft.Text("Product Details", size=40, weight=ft.FontWeight.BOLD),
-        ft.Divider(),
-        ft.Text(state.product["name"], size=30),
-        ft.Text(f"Price: ${state.product['price']}", size=20),
-        ft.Text(
-            state.product.get("description", "No description"),
-            size=16,
-            color=ft.Colors.GREY,
-        )
-    ]
+    return ft.View(
+        appbar=ft.AppBar(),
+        controls=[
+            ft.Text("Product Details", size=40, weight=ft.FontWeight.BOLD),
+            ft.Divider(),
+            ft.Text(state.product["name"], size=30),
+            ft.Text(f"Price: ${state.product['price']}", size=20),
+            ft.Text(
+                state.product.get("description", "No description"),
+                size=16,
+                color=ft.Colors.GREY,
+            )
+        ]
+    )
 
 
 # --- User Profile with Async Loading ---
@@ -161,17 +169,19 @@ async def load_user(state, user_id):
     }
 
 
-@view("/user/{user_id}", state_class=UserState, on_load=load_user, appbar=ft.AppBar())
-@ft.component
+@route("/user/{user_id}", state_class=UserState, on_load=load_user)
 def user_view(state, user_id):
-    return [
-        ft.Text("User Profile", size=40, weight=ft.FontWeight.BOLD),
-        ft.Divider(),
-        ft.Text(f"Name: {state.user['name']}", size=20),
-        ft.Text(f"Email: {state.user['email']}", size=16),
-        ft.Text(f"User ID: {state.user['id']}", size=16),
-        ft.Text(f"Joined: {state.user['joined']}", size=16, color=ft.Colors.GREY),
-    ]
+    return ft.View(
+        appbar=ft.AppBar(),
+        controls=[
+            ft.Text("User Profile", size=40, weight=ft.FontWeight.BOLD),
+            ft.Divider(),
+            ft.Text(f"Name: {state.user['name']}", size=20),
+            ft.Text(f"Email: {state.user['email']}", size=16),
+            ft.Text(f"User ID: {state.user['id']}", size=16),
+            ft.Text(f"Joined: {state.user['joined']}", size=16, color=ft.Colors.GREY),
+        ]
+    )
 
 
 def main(page: ft.Page):
