@@ -133,19 +133,13 @@ class RouterState:
         print(f"Route changed to: {new_route}")
 
         # Always append to stack without clearing
-        if new_route not in self.view_stack:
-            self.view_stack.append(new_route)
+        self.view_stack.append(new_route)
 
         self.current_route = new_route
 
         # Update page route
         if ft.context.page.route != new_route:
             ft.context.page.route = new_route
-
-    async def view_popped(self, e: ft.ViewPopEvent):
-        """Handle view pop events (back button)."""
-        # Use default behavior - no custom actions needed
-        pass
 
     def get_or_create_state(self, route_path: str, state_class: Optional[type]) -> Optional[Any]:
         """Get existing state or create new state for a route."""
@@ -216,7 +210,6 @@ def FletStack():
 
     # Subscribe to page events
     ft.context.page.on_route_change = state.route_change
-    ft.context.page.on_view_pop = state.view_popped
 
     async def execute_on_load(
             route_path: str,
