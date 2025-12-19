@@ -202,8 +202,7 @@ def FletStack():
     This component handles:
     - Route registration via @route decorator
     - URL parameters (e.g., /blogs/{blog_id})
-    - Stack navigation (routes with '+' prefix)
-    - Replace navigation (routes without '+' prefix)
+    - Automatic stack navigation (all routes append to stack)
     - 404 handling for unknown routes
     - State management for routes with state_class (separate state per route instance)
     - on_load hooks for route initialization
