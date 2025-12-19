@@ -113,8 +113,8 @@ asyncio.create_task(ft.context.page.push_route("/profile"))
 
 ```python
 # Navigate to different views
-ft.Button("Products", on_click=lambda _: push_route("/products"))
-ft.Button("About", on_click=lambda _: push_route("/about"))
+ft.Button("Products", on_click=lambda _: asyncio.create_task(ft.context.page.push_route("/products")))
+ft.Button("About", on_click=lambda _: asyncio.create_task(ft.context.page.push_route("/about")))
 
 # All views are added to the navigation stack
 # Back button returns to the previous view
