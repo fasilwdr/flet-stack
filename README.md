@@ -6,22 +6,21 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/flet-stack.svg)](https://pypi.org/project/flet-stack/)
 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/flet-stack?period=total&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=BLUE&left_text=downloads)](https://pepy.tech/projects/flet-stack)
 
-## ✨ What's New in 0.3.0
+## ✨ What's New in 0.4.0
 
-Version 0.3.0 brings a major simplification to the API:
+Version 0.4.0 simplifies navigation by removing the stack vs replace distinction:
 
-- 🎯 **Even simpler routing** - Views are now just functions that return `ft.View` objects
-- 🔄 **Stack navigation** - Use `+/route` to stack views, `/route` to replace the entire stack
-- ❌ **No more `@ft.component`** - Just simple functions, no decorator boilerplate
-- ⚡ **Automatic reactivity** - State changes trigger re-renders automatically
-- 🧹 **Cleaner code** - Less boilerplate, more straightforward
+- 🔄 **Simplified navigation** - All routes now append to the navigation stack
+- ❌ **Removed "+" prefix** - No more distinction between stack and replace navigation
+- 🎯 **Consistent behavior** - Navigation is now more predictable and intuitive
+- 🧹 **Cleaner API** - Less to remember, simpler mental model
 
-**[See the migration guide](#migration-from-02x) if upgrading from 0.2.x**
+**[See the migration guide](#migration-from-03x) if upgrading from 0.3.x**
 
 ## Features
 
 - 🎯 **Decorator-based routing** - Clean `@route()` decorator for route definitions
-- 📚 **Stack navigation** - Intuitive stack vs replace navigation with "+" prefix
+- 📚 **Automatic stack navigation** - All routes append to the navigation stack
 - 🔄 **Observable state management** - Built-in state with `@ft.observable` dataclasses
 - ⚡ **Async support** - Handle async data loading with automatic loading indicators
 - 🎨 **URL parameters** - Extract parameters from routes like `/user/{id}`
@@ -78,7 +77,7 @@ def home_view():
             ft.Button(
                 "Go to Profile",
                 on_click=lambda _: asyncio.create_task(
-                    ft.context.page.push_route("+/profile")
+                    ft.context.page.push_route("/profile")
                 )
             ),
         ]
@@ -99,40 +98,26 @@ ft.run(lambda page: page.render_views(FletStack))
 
 That's it! Clean, simple routing with no boilerplate.
 
-## Navigation: Stack vs Replace
+## Navigation
 
-flet-stack supports two navigation modes:
-
-### Stack Navigation (Add to Stack)
-
-Use the **"+" prefix** to add a view on top of the current stack:
+flet-stack automatically manages navigation by appending each new route to the stack:
 
 ```python
-# Adds /profile on top of the current view
-asyncio.create_task(ft.context.page.push_route("+/profile"))
+# Navigate to a new view - appends to stack
+asyncio.create_task(ft.context.page.push_route("/profile"))
 
 # User can press back to return to previous view
-```
-
-### Replace Navigation (Replace Stack)
-
-Use **no prefix** to replace the entire navigation stack:
-
-```python
-# Replaces entire stack with just /home
-asyncio.create_task(ft.context.page.push_route("/home"))
-
-# Previous views are cleared - back button goes to previous view in new stack
 ```
 
 **Common Pattern:**
 
 ```python
-# From home, stack other views
-ft.Button("Products", on_click=lambda _: push_route("+/products"))
+# Navigate to different views
+ft.Button("Products", on_click=lambda _: asyncio.create_task(ft.context.page.push_route("/products")))
+ft.Button("About", on_click=lambda _: asyncio.create_task(ft.context.page.push_route("/about")))
 
-# From anywhere, return home (clearing stack)
-ft.IconButton(icon=ft.Icons.HOME, on_click=lambda _: push_route("/"))
+# All views are added to the navigation stack
+# Back button returns to the previous view
 ```
 
 ## Advanced Usage
@@ -314,17 +299,14 @@ ft.run(main)
 Use `asyncio.create_task` with `ft.context.page.push_route`:
 
 ```python
-# Stack navigation - add to current stack
-asyncio.create_task(ft.context.page.push_route("+/profile"))
-
-# Replace navigation - replace entire stack
-asyncio.create_task(ft.context.page.push_route("/"))
+# Navigate to a view - appends to stack
+asyncio.create_task(ft.context.page.push_route("/profile"))
 
 # In button click handler
 ft.Button(
     "Go to Profile",
     on_click=lambda _: asyncio.create_task(
-        ft.context.page.push_route("+/profile")
+        ft.context.page.push_route("/profile")
     )
 )
 ```
@@ -340,12 +322,30 @@ Check the `examples/` directory for more detailed examples:
 **flet-stack** provides a `FletStack` component that:
 
 1. Registers all `@route` decorated functions
-2. Manages a navigation stack with stack vs replace modes
+2. Manages a navigation stack automatically
 3. Handles state management with observable dataclasses and automatic re-renders
 4. Manages async/sync loading with automatic progress indicators
 5. Renders views with proper navigation support
 6. Supports custom initial routes via `page.route`
 7. Isolates state per route instance for parameterized routes
+
+## Migration from 0.3.x
+
+If you're upgrading from version 0.3.x, here are the key changes:
+
+### Remove "+" Prefix from Navigation
+
+All navigation now automatically appends to the stack:
+
+```python
+# Before (0.3.x)
+asyncio.create_task(ft.context.page.push_route("+/products"))
+
+# After (0.4.0)
+asyncio.create_task(ft.context.page.push_route("/products"))
+```
+
+The distinction between stack and replace navigation has been removed for simplicity. All routes now append to the navigation stack.
 
 ## Migration from 0.2.x
 
@@ -357,7 +357,7 @@ If you're upgrading from version 0.2.x, here are the key changes:
 # Before (0.2.x)
 from flet_stack import view
 
-# After (0.3.0)
+# After (0.4.0)
 from flet_stack import route
 ```
 
@@ -375,7 +375,7 @@ def profile_view():
         ft.Button("Click me")
     ]
 
-# After (0.3.0)
+# After (0.4.0)
 @route("/profile")
 def profile_view():
     return ft.View(
@@ -387,18 +387,19 @@ def profile_view():
     )
 ```
 
-### 3. Stack Navigation Syntax
+### 3. Navigation Syntax
 
-Use the "+" prefix for stacking views:
+Navigation is now simpler:
 
 ```python
 # Before (0.2.x) - always stacked
 asyncio.create_task(ft.context.page.push_route("/products"))
 
-# After (0.3.0) - explicit stack vs replace
-asyncio.create_task(ft.context.page.push_route("+/products"))  # Stack
-asyncio.create_task(ft.context.page.push_route("/"))  # Replace
+# After (0.4.0) - still always stacks
+asyncio.create_task(ft.context.page.push_route("/products"))
 ```
+
+Note: Version 0.3.0 introduced a "+" prefix for stack navigation, but this has been removed in 0.4.0 for simplicity.
 
 ### 4. Simplified on_load
 
@@ -410,7 +411,7 @@ async def load_user(state, view, user_id):
     state.user = fetch_user(user_id)
     view.appbar = ft.AppBar(title=ft.Text(state.user['name']))
 
-# After (0.3.0)
+# After (0.4.0)
 async def load_user(state, user_id):
     state.user = fetch_user(user_id)
     # Set appbar directly in view function
@@ -427,7 +428,7 @@ Simply remove the `@ft.component` decorator:
 def counter_view(state):
     return [ft.Text(f"Count: {state.count}")]
 
-# After (0.3.0)
+# After (0.4.0)
 @route("/counter", state_class=CounterState)
 def counter_view(state):
     return ft.View(

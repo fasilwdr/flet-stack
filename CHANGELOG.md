@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-12-19
+
+### 🚨 Breaking Changes
+- **Removed "+" prefix navigation** - All routes now append to the navigation stack by default
+- The distinction between stack and replace navigation has been removed for simplicity
+- Custom view pop behavior removed - now uses default Flet behavior
+
+### Changed
+- Route change behavior now always appends to the existing stack instead of clearing it
+- Navigation is more consistent and predictable
+- Simplified mental model - no need to remember when to use "+" prefix
+
+### Removed
+- "+" prefix for stack navigation - all navigation now stacks by default
+- Custom `view_popped` handler logic - simplified to use default behavior
+- Stack vs replace navigation modes
+
+### Migration from 0.3.x
+
+Simply remove the "+" prefix from all navigation calls:
+
+```python
+# Before (0.3.x)
+asyncio.create_task(ft.context.page.push_route("+/products"))
+
+# After (0.4.0)
+asyncio.create_task(ft.context.page.push_route("/products"))
+```
+
+All routes now automatically append to the navigation stack.
+
 ## [0.3.0] - 2025-11-09
 
 ### 🚨 Breaking Changes
@@ -232,6 +263,7 @@ def counter_view(state):
 - Flexible parameter injection for view functions
 - Regex-based route matching with named groups
 
+[0.4.0]: https://github.com/fasilwdr/flet-stack/releases/tag/v0.4.0
 [0.3.0]: https://github.com/fasilwdr/flet-stack/releases/tag/v0.3.0
 [0.2.3]: https://github.com/fasilwdr/flet-stack/releases/tag/v0.2.3
 [0.2.2]: https://github.com/fasilwdr/flet-stack/releases/tag/v0.2.2

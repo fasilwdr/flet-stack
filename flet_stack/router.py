@@ -129,37 +129,19 @@ class RouterState:
     def route_change(self, e: ft.RouteChangeEvent):
         """Handle route change events."""
         new_route = e.route
-        is_stack_navigation = new_route.startswith("+")
 
-        # Strip the '+' prefix for actual route lookup
-        actual_route = new_route[1:] if is_stack_navigation else new_route
+        print(f"Route changed to: {new_route}")
 
-        print(f"Route changed to: {actual_route} (stack: {is_stack_navigation})")
+        # Append to stack for navigation history, but avoid duplicating
+        # the same route consecutively (e.g., initial route already added).
+        if not self.view_stack or self.view_stack[-1] != new_route:
+            self.view_stack.append(new_route)
 
-        if is_stack_navigation:
-            # Append to stack
-            if actual_route not in self.view_stack:
-                self.view_stack.append(actual_route)
-        else:
-            # Replace entire stack
-            self.view_stack = [actual_route]
+        self.current_route = new_route
 
-        self.current_route = actual_route
-
-        # Update page route without the '+'
-        if ft.context.page.route != actual_route:
-            ft.context.page.route = actual_route
-
-    async def view_popped(self, e: ft.ViewPopEvent):
-        """Handle view pop events (back button)."""
-        print("View popped")
-
-        if len(self.view_stack) > 1:
-            # Remove the current view
-            self.view_stack.pop()
-            # Navigate to the previous view
-            previous_route = self.view_stack[-1]
-            await ft.context.page.push_route(previous_route)
+        # Update page route
+        if ft.context.page.route != new_route:
+            ft.context.page.route = new_route
 
     def get_or_create_state(self, route_path: str, state_class: Optional[type]) -> Optional[Any]:
         """Get existing state or create new state for a route."""
@@ -216,8 +198,7 @@ def FletStack():
     This component handles:
     - Route registration via @route decorator
     - URL parameters (e.g., /blogs/{blog_id})
-    - Stack navigation (routes with '+' prefix)
-    - Replace navigation (routes without '+' prefix)
+    - Automatic stack navigation (all routes append to stack, including duplicates)
     - 404 handling for unknown routes
     - State management for routes with state_class (separate state per route instance)
     - on_load hooks for route initialization
@@ -231,7 +212,6 @@ def FletStack():
 
     # Subscribe to page events
     ft.context.page.on_route_change = state.route_change
-    ft.context.page.on_view_pop = state.view_popped
 
     async def execute_on_load(
             route_path: str,
