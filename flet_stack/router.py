@@ -132,7 +132,7 @@ class RouterState:
 
         print(f"Route changed to: {new_route}")
 
-        # Always append to stack without clearing
+        # Always append to stack (including duplicates for navigation history)
         self.view_stack.append(new_route)
 
         self.current_route = new_route
@@ -196,7 +196,7 @@ def FletStack():
     This component handles:
     - Route registration via @route decorator
     - URL parameters (e.g., /blogs/{blog_id})
-    - Automatic stack navigation (all routes append to stack)
+    - Automatic stack navigation (all routes append to stack, including duplicates)
     - 404 handling for unknown routes
     - State management for routes with state_class (separate state per route instance)
     - on_load hooks for route initialization
