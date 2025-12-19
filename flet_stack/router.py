@@ -129,37 +129,23 @@ class RouterState:
     def route_change(self, e: ft.RouteChangeEvent):
         """Handle route change events."""
         new_route = e.route
-        is_stack_navigation = new_route.startswith("+")
 
-        # Strip the '+' prefix for actual route lookup
-        actual_route = new_route[1:] if is_stack_navigation else new_route
+        print(f"Route changed to: {new_route}")
 
-        print(f"Route changed to: {actual_route} (stack: {is_stack_navigation})")
+        # Always append to stack without clearing
+        if new_route not in self.view_stack:
+            self.view_stack.append(new_route)
 
-        if is_stack_navigation:
-            # Append to stack
-            if actual_route not in self.view_stack:
-                self.view_stack.append(actual_route)
-        else:
-            # Replace entire stack
-            self.view_stack = [actual_route]
+        self.current_route = new_route
 
-        self.current_route = actual_route
-
-        # Update page route without the '+'
-        if ft.context.page.route != actual_route:
-            ft.context.page.route = actual_route
+        # Update page route
+        if ft.context.page.route != new_route:
+            ft.context.page.route = new_route
 
     async def view_popped(self, e: ft.ViewPopEvent):
         """Handle view pop events (back button)."""
-        print("View popped")
-
-        if len(self.view_stack) > 1:
-            # Remove the current view
-            self.view_stack.pop()
-            # Navigate to the previous view
-            previous_route = self.view_stack[-1]
-            await ft.context.page.push_route(previous_route)
+        # Use default behavior - no custom actions needed
+        pass
 
     def get_or_create_state(self, route_path: str, state_class: Optional[type]) -> Optional[Any]:
         """Get existing state or create new state for a route."""

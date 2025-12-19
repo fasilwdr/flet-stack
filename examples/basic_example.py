@@ -19,21 +19,21 @@ def home_view():
                     ft.Button(
                         "Go to About",
                         on_click=lambda _: asyncio.create_task(
-                            ft.context.page.push_route("+/about")
+                            ft.context.page.push_route("/about")
                         ),
                         icon=ft.Icons.INFO,
                     ),
                     ft.Button(
                         "Go to Contact",
                         on_click=lambda _: asyncio.create_task(
-                            ft.context.page.push_route("+/contact")
+                            ft.context.page.push_route("/contact")
                         ),
                         icon=ft.Icons.CONTACT_MAIL,
                     ),
                     ft.Button(
                         "View User Profile",
                         on_click=lambda _: asyncio.create_task(
-                            ft.context.page.push_route("+/user/123")
+                            ft.context.page.push_route("/user/123")
                         ),
                         icon=ft.Icons.PERSON,
                     ),

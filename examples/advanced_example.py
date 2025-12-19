@@ -38,14 +38,14 @@ def home_view(state):
             ft.Button(
                 "View Products",
                 on_click=lambda _: asyncio.create_task(
-                    ft.context.page.push_route("+/products")
+                    ft.context.page.push_route("/products")
                 ),
                 icon=ft.Icons.SHOPPING_CART,
             ),
             ft.Button(
                 "View User 42",
                 on_click=lambda _: asyncio.create_task(
-                    ft.context.page.push_route("+/user/42")
+                    ft.context.page.push_route("/user/42")
                 ),
                 icon=ft.Icons.PERSON,
             ),
@@ -75,7 +75,7 @@ async def load_products(state):
 def products_view(state):
     def on_click_product(e):
         asyncio.create_task(
-            ft.context.page.push_route(f"+/products/{e.control.data}")
+            ft.context.page.push_route(f"/products/{e.control.data}")
         )
 
     return ft.View(
