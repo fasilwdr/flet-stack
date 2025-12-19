@@ -132,8 +132,10 @@ class RouterState:
 
         print(f"Route changed to: {new_route}")
 
-        # Always append to stack (including duplicates for navigation history)
-        self.view_stack.append(new_route)
+        # Append to stack for navigation history, but avoid duplicating
+        # the same route consecutively (e.g., initial route already added).
+        if not self.view_stack or self.view_stack[-1] != new_route:
+            self.view_stack.append(new_route)
 
         self.current_route = new_route
 
